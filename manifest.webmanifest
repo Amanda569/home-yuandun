@@ -1,0 +1,19 @@
+{
+  "name": "库存管理",
+  "short_name": "库存",
+  "description": "两人共享的轻量收纳和库存 PWA。",
+  "id": "./index.html",
+  "start_url": "./index.html#items",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f4ef",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

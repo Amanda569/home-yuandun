@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0f766e">
+    <title>库存管理</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">共享收纳</p>
+          <h1 id="appTitle">库存管理</h1>
+          <p class="build-version" id="buildVersion">版本 2026.08.10.1</p>
+        </div>
+        <button class="icon-button" id="syncButton" aria-label="同步数据" title="同步数据">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.4 6.4L3 16m0 0v5h5m-5-9A9 9 0 0 1 18.4 5.6L21 8m0 0V3h-5"/></svg>
+        </button>
+      </header>
+
+      <main>
+        <section class="search-band" aria-label="搜索物品">
+          <div class="search-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="searchInput" type="search" placeholder="搜物品、位置、分类或区域" autocomplete="off">
+          </div>
+          <div class="stats-strip">
+            <button class="stat-pill" data-view="items">
+              <strong id="itemCount">0</strong>
+              <span>物品</span>
+            </button>
+            <button class="stat-pill" data-view="locations">
+              <strong id="locationCount">0</strong>
+              <span>位置</span>
+            </button>
+            <button class="stat-pill warning" data-view="replenish">
+              <strong id="lowCount">0</strong>
+              <span>待补</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="view active" id="itemsView" aria-labelledby="itemsTitle">
+          <div class="section-head">
+            <h2 id="itemsTitle">物品清单</h2>
+            <div class="section-actions"></div>
+          </div>
+          <div class="search-inline-results" id="searchResults"></div>
+          <div class="list-mode" id="listMode">
+            <div class="filter-row" id="categoryFilters"></div>
+            <div class="list" id="itemList"></div>
+            <div class="empty-state" id="emptyItems">
+              <div class="empty-visual shelves" aria-hidden="true"></div>
+              <h3>先记最常找和会耗尽的东西</h3>
+              <p>先建立区域和位置，再把实际物品录入到对应位置。</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="locationsView" aria-labelledby="locationsTitle">
+          <div class="section-head">
+            <h2 id="locationsTitle">位置台账</h2>
+            <div class="section-actions">
+              <button class="text-button" id="addLocationButton">新增位置</button>
+            </div>
+          </div>
+          <div class="filter-row location-filter-row" id="locationFilters"></div>
+          <div class="location-grid" id="locationGrid"></div>
+          <div class="empty-state compact" id="emptyLocations">
+            <div class="empty-visual shelves" aria-hidden="true"></div>
+            <h3>还没有符合条件的位置</h3>
+          </div>
+        </section>
+
+        <section class="view" id="zonesView" aria-labelledby="zonesTitle">
+          <div class="section-head">
+            <h2 id="zonesTitle">区域</h2>
+            <div class="section-actions">
+              <button class="text-button" id="addZoneButton">新增区域</button>
+            </div>
+          </div>
+          <div class="zone-grid" id="zoneGrid"></div>
+          <div class="empty-state compact" id="emptyZones">
+            <div class="empty-visual shelves" aria-hidden="true"></div>
+            <h3>还没有区域</h3>
+          </div>
+        </section>
+
+        <section class="view" id="replenishView" aria-labelledby="replenishTitle">
+          <div class="section-head">
+            <h2 id="replenishTitle">补货</h2>
+            <span class="muted" id="replenishHint"></span>
+          </div>
+          <div class="list" id="replenishList"></div>
+          <div class="empty-state compact" id="emptyReplenish">
+            <div class="empty-visual check" aria-hidden="true"></div>
+            <h3>暂时没有需要补货的东西</h3>
+          </div>
+        </section>
+
+        <section class="view" id="settingsView" aria-labelledby="settingsTitle">
+          <div class="section-head">
+            <h2 id="settingsTitle">设置</h2>
+          </div>
+          <div class="settings-stack">
+            <div class="settings-panel">
+              <h3>家庭空间</h3>
+              <label class="field-label" for="appDisplayName">网页展示名称</label>
+              <input class="plain-input" id="appDisplayName" type="text" placeholder="比如：我的家库存">
+              <label class="field-label" for="householdName">空间名称</label>
+              <input class="plain-input" id="householdName" type="text" placeholder="比如：我们的小家">
+              <label class="field-label" for="memberName">你的名字</label>
+              <input class="plain-input" id="memberName" type="text" placeholder="比如：我 / 室友A">
+              <button class="primary-button full" id="saveSettingsButton">保存</button>
+            </div>
+
+            <div class="settings-panel">
+              <h3>免费同步</h3>
+              <p class="muted">当前版本支持本机离线使用。按 README 配好 Supabase 免费项目后，这里会显示云同步状态。</p>
+              <div class="sync-card" id="syncStatusCard">
+                <span class="sync-dot"></span>
+                <div>
+                  <strong id="syncStatusText">本机模式</strong>
+                  <p id="syncStatusDetail">数据保存在这台设备的浏览器里。</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-panel">
+              <h3>添加到主屏幕</h3>
+              <p class="muted">将库存应用添加到手机或平板主屏幕，下次可以像应用一样快速打开。</p>
+              <button class="secondary-button full" id="installAppButton" type="button">添加到主屏幕</button>
+            </div>
+
+            <div class="settings-panel danger-zone">
+              <h3>数据</h3>
+              <div class="button-row">
+                <button class="secondary-button" id="exportButton">导出</button>
+                <label class="secondary-button file-button">
+                  导入
+                  <input id="importInput" type="file" accept="application/json">
+                </label>
+                <button class="ghost-danger" id="clearButton">清空</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <nav class="tabbar" aria-label="主导航">
+        <button class="tab active" data-view="items" aria-label="物品">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5-9 4.5L3 7.5Z"/><path d="m3 12 9 4.5L21 12"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>
+          <span>物品</span>
+        </button>
+        <button class="tab" data-view="locations" aria-label="位置">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-4.4 7-11a7 7 0 0 0-14 0c0 6.6 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          <span>位置</span>
+        </button>
+        <button class="tab" data-view="zones" aria-label="区域">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v7H4z"/><path d="M13 5h7v7h-7z"/><path d="M4 14h7v5H4z"/><path d="M13 14h7v5h-7z"/></svg>
+          <span>区域</span>
+        </button>
+        <button class="tab" data-view="replenish" aria-label="补货">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h12l1 7H5l1-7Z"/><path d="M5 9h14l-1.2 13H6.2L5 9Z"/><path d="M9 13h6"/></svg>
+          <span>补货</span>
+        </button>
+        <button class="tab" data-view="settings" aria-label="设置">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.8 1.8 0 0 0 .4 2l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.8 1.8 0 0 0-2-.4 1.8 1.8 0 0 0-1 1.7V21a2 2 0 1 1-4 0v-.1a1.8 1.8 0 0 0-1-1.7 1.8 1.8 0 0 0-2 .4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.8 1.8 0 0 0 .4-2 1.8 1.8 0 0 0-1.7-1H3a2 2 0 1 1 0-4h.1a1.8 1.8 0 0 0 1.7-1 1.8 1.8 0 0 0-.4-2l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.8 1.8 0 0 0 2 .4 1.8 1.8 0 0 0 1-1.7V3a2 2 0 1 1 4 0v.1a1.8 1.8 0 0 0 1 1.7 1.8 1.8 0 0 0 2-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.8 1.8 0 0 0-.4 2 1.8 1.8 0 0 0 1.7 1h.1a2 2 0 1 1 0 4h-.1a1.8 1.8 0 0 0-1.7 1Z"/></svg>
+          <span>设置</span>
+        </button>
+      </nav>
+
+      <button class="fab" id="addItemButton" aria-label="新增物品" title="新增物品">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+
+    <dialog class="modal" id="itemModal">
+      <form method="dialog" class="modal-sheet" id="itemForm">
+        <div class="modal-head">
+          <h2 id="itemModalTitle">新增物品</h2>
+          <button class="icon-button" value="cancel" type="button" data-close-modal aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <input id="itemId" type="hidden">
+        <label class="field-label" for="itemName">物品名</label>
+        <div class="autocomplete-wrap">
+          <input class="plain-input" id="itemName" type="text" required placeholder="输入物品名称" autocomplete="off">
+          <div class="autocomplete-dropdown" id="itemNameDropdown"></div>
+        </div>
+
+        <label class="field-label" for="itemCategory">分类（可自定义）</label>
+        <input class="plain-input" id="itemCategory" type="text" list="itemCategoryOptions" placeholder="输入分类">
+        <datalist id="itemCategoryOptions"></datalist>
+
+        <div class="two-col">
+          <div>
+            <label class="field-label" for="itemZone">区域（可自定义）</label>
+            <input class="plain-input" id="itemZone" type="text" list="itemZoneOptions" placeholder="输入区域名称">
+            <datalist id="itemZoneOptions"></datalist>
+          </div>
+          <div>
+            <label class="field-label" for="itemLocation">位置</label>
+            <input class="plain-input" id="itemLocation" type="text" list="itemLocationOptions" placeholder="选择或输入位置">
+            <datalist id="itemLocationOptions"></datalist>
+            <p class="field-error" id="itemLocationError" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div>
+            <label class="field-label" for="itemQuantity">数量/余量</label>
+            <input class="plain-input" id="itemQuantity" type="number" min="0" step="0.5" placeholder="0">
+          </div>
+          <div>
+            <label class="field-label" for="itemUnit">单位</label>
+            <input class="plain-input" id="itemUnit" type="text" placeholder="件/包/支/瓶">
+          </div>
+        </div>
+
+        <label class="toggle-row">
+          <input id="trackStock" type="checkbox">
+          <span>需要低库存提醒</span>
+        </label>
+
+        <div id="minStockWrap" class="min-stock-wrap">
+          <label class="field-label" for="itemMinQuantity">低于或等于</label>
+          <input class="plain-input" id="itemMinQuantity" type="number" min="0" step="0.5" value="1">
+        </div>
+
+        <label class="field-label" for="itemNote">备注</label>
+        <textarea class="plain-input" id="itemNote" rows="2" placeholder="可不填"></textarea>
+
+        <label class="field-label" for="itemThumbnailFile">物品缩略图</label>
+        <div class="image-upload-row">
+          <input class="plain-input file-input" id="itemThumbnailFile" type="file" accept="image/*">
+          <button class="secondary-button" type="button" id="clearItemThumbnailButton">清除</button>
+        </div>
+        <input id="itemThumbnail" type="hidden">
+        <div class="image-preview" id="itemThumbnailPreview"></div>
+
+        <details class="more-fields" id="moreFields">
+          <summary>更多资料</summary>
+          <div id="builtinFields"></div>
+          <div id="customFieldsArea"></div>
+          <button type="button" class="text-button" id="addCustomFieldButton">+ 添加自定义字段</button>
+        </details>
+
+        <div class="modal-actions">
+          <button class="ghost-danger hidden" id="deleteItemButton" type="button">删除</button>
+          <button class="secondary-button" type="button" data-close-modal>取消</button>
+          <button class="primary-button" id="saveItemButton" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="detailModal">
+      <div class="modal-sheet detail-sheet">
+        <div class="modal-head">
+          <div class="zone-detail-title-wrap">
+            <button class="icon-button zone-back-button hidden" type="button" id="detailBackButton" aria-label="Back" title="Back">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <h2 id="detailTitle">物品详情</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-modal aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="detail-top">
+          <div class="detail-thumb" id="detailThumb"></div>
+          <div>
+            <p class="detail-kicker" id="detailCategory">未分类</p>
+            <p class="detail-quantity" id="detailQuantity">0</p>
+            <p class="muted" id="detailLocation">未设置位置</p>
+          </div>
+        </div>
+        <div class="detail-grid" id="detailGrid"></div>
+        <p class="detail-note" id="detailNote"></p>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" id="openContainerButton">看位置</button>
+          <button class="primary-button" type="button" id="editFromDetailButton">编辑</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="containerModal">
+      <div class="modal-sheet container-sheet">
+        <div class="modal-head">
+          <div class="zone-detail-title-wrap">
+            <button class="icon-button zone-back-button hidden" type="button" id="containerBackButton" aria-label="Back" title="Back">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <h2 id="containerTitle">位置物品</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-modal aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="container-meta" id="containerMeta"></div>
+        <div class="space-mode-switch compact" role="tablist" aria-label="容器视图模式">
+          <button class="seg-button active" type="button" data-container-mode="grid">网格</button>
+          <button class="seg-button" type="button" data-container-mode="table">表格</button>
+        </div>
+        <div class="container-items-grid" id="containerItemsGrid"></div>
+        <div class="container-items-table-wrap hidden" id="containerItemsTableWrap">
+          <table class="container-items-table">
+            <thead>
+              <tr>
+                <th>物品</th>
+                <th>数量</th>
+                <th>分类</th>
+                <th>位置</th>
+              </tr>
+            </thead>
+            <tbody id="containerItemsTableBody"></tbody>
+          </table>
+        </div>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" id="containerAddItemButton">添加物品</button>
+          <button class="secondary-button" type="button" data-close-modal>关闭</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="locationModal">
+      <form method="dialog" class="modal-sheet" id="locationForm">
+        <div class="modal-head">
+          <h2 id="locationModalTitle">新增位置</h2>
+          <button class="icon-button" value="cancel" type="button" data-close-modal aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <input id="locationOriginalName" type="hidden">
+        <label class="field-label" for="locationName">位置名称</label>
+        <input class="plain-input" id="locationName" type="text" required placeholder="例如：储物箱-1">
+        <p class="field-error" id="locationNameError" aria-live="polite"></p>
+        <label class="field-label" for="locationZone">区域</label>
+        <select class="plain-input" id="locationZone" required></select>
+        <p class="field-error" id="locationZoneError" aria-live="polite"></p>
+        <label class="field-label" for="locationNote">说明</label>
+        <textarea class="plain-input" id="locationNote" rows="2" placeholder="比如：备用消耗品、只放小件工具"></textarea>
+        <label class="field-label" for="locationImageFile">位置图片</label>
+        <div class="image-upload-row">
+          <input class="plain-input file-input" id="locationImageFile" type="file" accept="image/*">
+          <button class="secondary-button" type="button" id="clearLocationImageButton">清除</button>
+        </div>
+        <input id="locationImage" type="hidden">
+        <div class="image-preview" id="locationImagePreview"></div>
+        <div class="modal-actions">
+          <button class="ghost-danger hidden" id="deleteLocationButton" type="button">删除</button>
+          <button class="secondary-button" type="button" data-close-modal>取消</button>
+          <button class="primary-button" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="zoneModal">
+      <form method="dialog" class="modal-sheet" id="zoneForm">
+        <div class="modal-head">
+          <h2 id="zoneModalTitle">新增区域</h2>
+          <button class="icon-button" type="button" data-close-modal aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <input id="zoneOriginalName" type="hidden">
+        <label class="field-label" for="zoneName">区域名称</label>
+        <input class="plain-input" id="zoneName" type="text" placeholder="比如：床头柜">
+        <p class="field-error" id="zoneNameError" aria-live="polite"></p>
+        <label class="field-label" for="zoneParent">父级区域</label>
+        <select class="plain-input" id="zoneParent">
+          <option value="">无（顶级区域）</option>
+        </select>
+        <label class="field-label" for="zoneImageFile">区域图片</label>
+        <div class="image-upload-row">
+          <input class="plain-input file-input" id="zoneImageFile" type="file" accept="image/*">
+          <button class="secondary-button" type="button" id="clearZoneImageButton">清除</button>
+        </div>
+        <input id="zoneImage" type="hidden">
+        <div class="image-preview" id="zoneImagePreview"></div>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" data-close-modal>取消</button>
+          <button class="primary-button" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="zoneDetailModal">
+      <div class="modal-sheet container-sheet">
+        <div class="modal-head">
+          <div class="zone-detail-title-wrap">
+            <button class="icon-button zone-back-button hidden" type="button" id="zoneDetailBackButton" aria-label="Back" title="Back">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <h2 id="zoneDetailTitle">区域</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-modal aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="container-meta" id="zoneDetailMeta"></div>
+        <div class="zone-detail-list" id="zoneDetailList"></div>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" id="zoneDetailAddLocationButton">添加位置</button>
+          <button class="secondary-button" type="button" data-close-modal>关闭</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <dialog class="modal" id="confirmModal">
+      <div class="modal-sheet">
+        <div class="modal-head">
+          <h2 id="confirmTitle">确认</h2>
+          <button class="icon-button" type="button" data-close-modal aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <p id="confirmMessage" style="margin:14px 0; color:var(--ink);"></p>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" data-close-modal id="confirmCancel">取消</button>
+          <button class="primary-button" type="button" id="confirmOk">确认</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="mergeChoiceModal">
+      <div class="modal-sheet">
+        <div class="modal-head">
+          <h2 id="mergeChoiceTitle">选择操作</h2>
+          <button class="icon-button" type="button" id="mergeChoiceClose" aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div id="mergeChoiceBody" style="margin:10px 0;"></div>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" id="mergeChoiceNew">新增到当前位置</button>
+        </div>
+      </div>
+    </dialog>
+
+    <script src="./config.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
